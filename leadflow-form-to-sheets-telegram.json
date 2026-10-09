@@ -1,0 +1,117 @@
+{
+  "name": "LeadFlow — Form → Google Sheets → Telegram Alert (FREE demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadflow",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook (form submit)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "leadflow-demo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "check-name",
+              "leftValue": "={{ $json.body.name }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            },
+            {
+              "id": "check-contact",
+              "leftValue": "={{ $json.body.email || $json.body.phone }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-1",
+      "name": "Validate (name + contact present)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Leads", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now.toISO() }}",
+            "Name": "={{ $json.body.name }}",
+            "Email": "={{ $json.body.email }}",
+            "Phone": "={{ $json.body.phone }}",
+            "Source": "={{ $json.body.source || 'website' }}",
+            "Status": "New"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-1",
+      "name": "Append row to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [720, 220]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "🔔 *New lead!*\nName: {{ $json.body.name }}\nContact: {{ $json.body.email || $json.body.phone }}\nSource: {{ $json.body.source || 'website' }}\n\n👉 Follow up within 15 min.",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "tg-1",
+      "name": "Telegram alert to manager",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true}"
+      },
+      "id": "respond-1",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook (form submit)": {
+      "main": [[{ "node": "Validate (name + contact present)", "type": "main", "index": 0 }]]
+    },
+    "Validate (name + contact present)": {
+      "main": [
+        [{ "node": "Append row to Google Sheets", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Append row to Google Sheets": {
+      "main": [[{ "node": "Telegram alert to manager", "type": "main", "index": 0 }]]
+    },
+    "Telegram alert to manager": {
+      "main": [[{ "node": "Respond 200 OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Free n8n workflow: capture form leads into Google Sheets and get an instant Telegram alert. No lost leads. From fizoni.com — need it custom-built for your business? https://fizoni.com/products/booking-recovery-automation-service"
+  },
+  "tags": [{ "name": "lead-gen" }, { "name": "free" }]
+}
